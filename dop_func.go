@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	tgbotapi "github.com/Syfaro/telegram-bot-api"
 )
 
 const (
@@ -30,7 +32,7 @@ func final_time() string {
 	time_str = strings.TrimSpace(time_str)
 	slice := strings.Split(time_str, "")
 	slice = slice[:10]
-	var time_fin = []string{"17:45:00"}
+	var time_fin = []string{"17:35:00"}
 	c := append(slice, time_fin...)
 	str2 := strings.Join(c, " ")
 	str2 = strings.TrimSpace(str2)
@@ -51,45 +53,6 @@ func final_time() string {
 	}
 	return s
 }
-func Run() bool { // Будильник
-
-	/*next := time.After(time.Until(final_time_time())) // Создаем начальный канал таймера
-	for {
-		select {
-		case <-next: // Ожидает истечение срока таймера
-		log.Println("Time to wake up")
-			next = time.After(time.Until(final_time_time())) // Создает другой канал таймера для другого события
-		}
-	}*/
-
-	//i := time.Now()
-	i := 0
-	log.Println("Alarm will ring in ", time.Until(final_time_time()))
-	tg := time.Until(final_time_time())
-	ticker := time.AfterFunc(tg, func() {
-		//i = i.Add(1 * time.Second)
-		i++
-	})
-
-	for {
-		select {
-		case <-ticker.C:
-			log.Println("nsmei")
-		case <-time.After((tg)):
-			if i == 1 {
-				ticker.Reset(1 * time.Second)
-				continue
-			}
-			goto BRK
-		}
-	BRK:
-		ticker.Stop()
-		//break
-		log.Println(time.Now().Format("2006/01/02 15:04:05.999999999"), " ALARM \n")
-		return true
-	}
-
-}
 
 type checker interface {
 	check(host, port string) bool
@@ -104,12 +67,14 @@ func (c http_prov) check(host, port string) bool {
 	url := ("http://" + host + ":" + port)
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
+		return false
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
+		return false
 	}
 	_ = body
 	log.Println("HTTP Response Status:", resp.StatusCode, http.StatusText(resp.StatusCode))
@@ -137,4 +102,49 @@ func (a tcp_prov) check(host, port string) bool {
 		log.Println()
 		return true
 	}
+}
+func message_func(test1, test2 checker, host, port string) (string, string) {
+	msg1 := "Сообщений о проверке пока нет"
+	msg2 := "Сообщений о проверке пока нет"
+	if test1.check(host, port) {
+		msg1 = "Проверка прошла успешно, tcp connect работает, на указанном порту открыт сервер\n"
+	} else {
+		msg1 = "Ошибка, tcp connect не рабоатет, на указанном порту не удается обнаружить сервер\n"
+	}
+	if test2.check(host, port) {
+		msg2 = "Проверка прошла успешно, http запрос успешно дошел и был обработан, сервер обрабатывает сообщения в штатном режиме\n"
+	} else {
+		msg2 = "Ошибка, функция обработчик не работает или что-то пошло не так\n"
+	}
+	return msg1, msg2
+
+}
+func Run(bot *tgbotapi.BotAPI) {
+	i := 0
+	log.Println("Alarm will ring in ", time.Until(final_time_time()))
+	tg := time.Until(final_time_time())
+	ticker := time.AfterFunc(tg, func() {
+		//i = i.Add(1 * time.Second)
+		i++
+	})
+
+	for {
+		select {
+		case <-ticker.C:
+			log.Println("nsmei")
+		case <-time.After((tg)):
+			if i == 1 {
+				ticker.Reset(1 * time.Second)
+				continue
+			}
+			goto BRK
+		}
+	BRK:
+		ticker.Stop()
+		alarm := "Звенит будильник.Пожалуйста, проверьте статус серверов"
+		bot.Send(tgbotapi.NewMessage(653924346, alarm))
+		log.Println(time.Now().Format("2006/01/02 15:04:05.999999999"), " ALARM \n")
+		break
+	}
+
 }
