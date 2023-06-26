@@ -32,7 +32,7 @@ func main() {
 		// Прослушиваем ответ
 		conn.SetReadDeadline(time.Now().Add(time.Millisecond * 800))
 		//conn.SetReadDeadline(time.Now().Add(time.Second * 3))
-		//клиент может ожидать данные на чтение от сервера в течении 900 мс
+		//клиент может ожидать данные на чтение от сервера в течении 800 мс
 		//По истечении этого времени операция чтения генерирует ошибку и соответственно происходит выход из цикла,
 		//где мы пытаемся прочитать данные от сервера.
 		for {
@@ -42,7 +42,7 @@ func main() {
 				break
 			}
 			fmt.Print(string(buff[0:n]))
-			conn.SetReadDeadline(time.Now().Add(time.Millisecond * 700))
+			conn.SetReadDeadline(time.Now().Add(time.Millisecond * 300))
 			//conn.SetReadDeadline(time.Now().Add(time.Second * 3))
 			//после прочтения первых 1024 байт таймаут сбрасывается до 300 миллисекунд.
 			//То есть если в течение последующих 300 милисекунд сервер не пришлет никаких данных, то происходит выход из цикла и соответственно чтение данных заканчивается.
