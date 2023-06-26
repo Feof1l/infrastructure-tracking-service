@@ -1,0 +1,29 @@
+{
+  "1" : {
+      "type" : "tcp_connect",
+      "ip_name" : "127.0.0.1" ,
+      "ip_port" : "4444" ,
+      "answer_timeout" : "300"
+    },
+  "2" : {
+      "type" : "http_rec",
+      "ip_name" : "127.0.0.1" ,
+      "ip_port" : "3333" ,
+      "url" : "http://127.0.0.1:3333",
+      "answer_timeout" : "300"
+    },
+    "3" : {
+      "type" : "http_rec",
+      "ip_name" : "127.0.0.1" ,
+      "ip_port" : "4444" ,
+      "url" : "http://127.0.0.1:4444",
+      "answer_timeout" : "300"
+    },
+    "4" : {
+      "type" : "tcp_connect",
+      "ip_name" : "127.0.0.1" ,
+      "ip_port" : "5555" ,
+      "answer_timeout" : "300"
+    } 
+    
+}

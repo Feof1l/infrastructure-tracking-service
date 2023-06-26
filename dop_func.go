@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,6 +16,10 @@ import (
 const (
 	DateTime = "2006-01-02 15:04:05"
 	//final_time = "2023-06-19 15:42:00"
+)
+
+var (
+	result = []string{}
 )
 
 func final_time_time() time.Time {
@@ -55,68 +61,130 @@ func final_time() string {
 }
 
 type checker interface {
-	check(host, port string) bool
+	check(result []string) bool
 }
 
-type http_prov struct{}
+//type http_prov struct{}
 
-type tcp_prov struct{}
+//type tcp_prov struct{}
 
-func (c http_prov) check(host, port string) bool {
+func (task task_http) check() (bool, []string) {
+
+	timeout, err1 := strconv.Atoi(task.answer_timeout)
+	if err1 != nil {
+		log.Println(err1.Error())
+	}
+	client := http.Client{
+		Timeout: time.Duration(timeout) * time.Nanosecond,
+	}
+
+	time_c := time.Now()
+	time_format_c := time_c.Format(time.DateTime)
+	msg := "Номер задачи: " + task.id + " тип проверки: http " + "текущая дата: " + time_format_c + " результат проверки: "
+
 	log.Println("http_prov satrted the work")
-	url := ("http://" + host + ":" + port)
-	resp, err := http.Get(url)
+
+	resp, err := client.Get(task.url)
 	if err != nil {
 		log.Println(err)
-		return false
+		msg = msg + "Error " + "комментарии: " + "impossible get url " + task.url + "\n"
+		result = append(result, msg)
+		return false, result
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Println(err)
-		return false
+		msg = msg + "Error " + "комментарии: " + "impossible read the Body" + "/n"
+		result = append(result, msg)
+		return false, result
 	}
 	_ = body
 	log.Println("HTTP Response Status:", resp.StatusCode, http.StatusText(resp.StatusCode))
 
 	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
 		log.Println("HTTP Status is in the 2xx range\n")
-		return true
+		msg = msg + "OK " + "комментарии: " + "StatusCode: " + strconv.Itoa(resp.StatusCode) + "\n"
+		result = append(result, msg)
+		return true, result
 	} else {
 		log.Println("Something has broken\n")
-		return false
+		msg = msg + "Error\n"
+		result = append(result, msg)
+		return false, result
 	}
 
 }
 
-func (a tcp_prov) check(host, port string) bool {
+func (task task_tcp) check() (bool, []string) {
+	timeout, err1 := strconv.Atoi(task.answer_timeout)
+	if err1 != nil {
+		log.Println(err1.Error())
+	}
+	time_c := time.Now()
+	time_format_c := time_c.Format(time.DateTime)
+	msg := "Номер задачи: " + task.id + " тип проверки: tcp " + "текущая дата: " + time_format_c + " результат проверки: "
 	log.Println("tcp_prov satrted the work")
-	timeout := time.Duration(1 * time.Second)
-	_, err := net.DialTimeout("tcp", host+":"+port, timeout)
+	timeout_time := time.Duration(timeout)
+	_, err := net.DialTimeout("tcp", task.ip_name+":"+task.ip_port, timeout_time)
 	if err != nil {
-		log.Printf("%s %s %s", host, "not responding on port ", port, err.Error())
+		log.Printf("%s %s %s", task.ip_name, "not responding on port ", task.ip_port, err.Error())
 		log.Println()
-		return false
+		msg = msg + "Error " + "комментарии:" + " not responding on current port " + task.ip_port + "\n"
+		result = append(result, msg)
+		return false, result
 	} else {
-		log.Printf("%s %s %s\n", host, "responding on port:", port)
+		log.Printf("%s %s %s\n", task.ip_name, "responding on port:", task.ip_port)
 		log.Println()
-		return true
+		msg = msg + "OK\n"
+		result = append(result, msg)
+		return true, result
 	}
+
 }
-func message_func(test1, test2 checker, host, port string) (string, string) {
-	msg1 := "Сообщений о проверке пока нет"
-	msg2 := "Сообщений о проверке пока нет"
-	if test1.check(host, port) {
-		msg1 = "Проверка прошла успешно, tcp connect работает, на указанном порту открыт сервер\n"
-	} else {
-		msg1 = "Ошибка, tcp connect не рабоатет, на указанном порту не удается обнаружить сервер\n"
+func (task task_new_type) check() (bool, []string) {
+
+	timeout, err1 := strconv.Atoi(task.answer_timeout)
+	if err1 != nil {
+		log.Println(err1.Error())
 	}
-	if test2.check(host, port) {
-		msg2 = "Проверка прошла успешно, http запрос успешно дошел и был обработан, сервер обрабатывает сообщения в штатном режиме\n"
-	} else {
-		msg2 = "Ошибка, функция обработчик не работает или что-то пошло не так\n"
+	_=timeout
+
+	time_c := time.Now()
+	time_format_c := time_c.Format(time.DateTime)
+	msg := "Номер задачи: " + task.id + " тип проверки: http " + "текущая дата: " + time_format_c + " результат проверки: "
+
+	log.Println("http_prov satrted the work")
+
+	resp, err := http.Get(task.url)
+	if err != nil {
+		log.Println(err)
+		msg = msg + "Error " + "комментарии: " + "impossible get url " + task.url + "\n"
+		result = append(result, msg)
+		return false, result
 	}
-	return msg1, msg2
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println(err)
+		msg = msg + "Error " + "комментарии: " + "impossible read the Body" + "/n"
+		result = append(result, msg)
+		return false, result
+	}
+	_ = body
+	log.Println("HTTP Response Status:", resp.StatusCode, http.StatusText(resp.StatusCode))
+
+	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+		log.Println("HTTP Status is in the 2xx range\n")
+		msg = msg + "OK " + "комментарии: " + "StatusCode: " + strconv.Itoa(resp.StatusCode) + "\n"
+		result = append(result, msg)
+		return true, result
+	} else {
+		log.Println("Something has broken\n")
+		msg = msg + "Error\n"
+		result = append(result, msg)
+		return false, result
+	}
 
 }
 func Run(bot *tgbotapi.BotAPI) {
@@ -147,4 +215,95 @@ func Run(bot *tgbotapi.BotAPI) {
 		break
 	}
 
+}
+func read_json_file(file_name string) map[string]map[string]string {
+	content, err := ioutil.ReadFile(file_name) // чтение файла
+	if err != nil {
+		log.Fatal("ошибка открытия файла: ", err)
+	}
+
+	var list_conf map[string]map[string]string
+	// данные с файла считываемв мапу мап - ключ - id задачи
+	// значение - мапа строк с параметрами задачи
+	err = json.Unmarshal(content, &list_conf)
+	if err != nil {
+		log.Fatal("Ошибка во время выполнения Unmarshal(): ", err)
+	}
+	//log.Println(list_conf["2"]["sdsd"])
+	return list_conf
+}
+
+// структуры для храненения параметров для разных проверок
+type task_tcp struct {
+	id             string
+	ip_name        string
+	ip_port        string
+	answer_timeout string
+}
+type task_http struct {
+	id             string
+	ip_name        string
+	ip_port        string
+	url            string
+	answer_timeout string
+}
+type task_new_type struct{
+	id             string
+	ip_name        string
+	ip_port        string
+	url            string
+	answer_timeout string
+}
+
+func load_params(list_conf map[string]map[string]string) ([]task_tcp, []task_http) {
+
+	tasks_tcp := []task_tcp{} // создаем слайсы для хранения стурктур задач
+	tasks_http := []task_http{}
+	i := 0
+	//c := append(slice, time_fin...)
+	for Id, map_params_task := range list_conf {
+		//проходимся по мапе
+		// проверяем тип, если он tcp, записываем параметры из мапы в соот структуру
+		//также сохраняем id
+		i++
+		if map_params_task["type"] == "tcp_connect" {
+			tasks_tcp = append(tasks_tcp, task_tcp{id: Id, ip_name: map_params_task["ip_name"],
+				ip_port:        map_params_task["ip_port"],
+				answer_timeout: map_params_task["answer_timeout"]})
+		} else if map_params_task["type"] == "http_rec" {
+			tasks_http = append(tasks_http, task_http{id: Id, ip_name: map_params_task["ip_name"],
+				ip_port:        map_params_task["ip_port"],
+				url:            map_params_task["url"],
+				answer_timeout: map_params_task["answer_timeout"]})
+		}
+
+	}
+	//log.Println(tasks_tcp)
+	//log.Println(tasks_http)
+	return tasks_tcp, tasks_http
+}
+
+/*
+func convert_params(mas []task_tcp){
+
+		for _, value := range mas{
+
+
+		}
+		i, err := strconv.Atoi(s)
+	    if err != nil {
+	        // ... handle error
+	        panic(err)
+	    }
+	}
+*/
+func prov_tcp_task(params_tcp []task_tcp) {
+	for _, value := range params_tcp {
+		log.Println(value.check())
+	}
+}
+func prov_http_task(params_http []task_http) {
+	for _, value := range params_http {
+		log.Println(value.check())
+	}
 }
