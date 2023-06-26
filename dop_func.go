@@ -148,7 +148,7 @@ func (task task_new_type) check() (bool, []string) {
 	if err1 != nil {
 		log.Println(err1.Error())
 	}
-	_=timeout
+	_ = timeout
 
 	time_c := time.Now()
 	time_format_c := time_c.Format(time.DateTime)
@@ -247,7 +247,7 @@ type task_http struct {
 	url            string
 	answer_timeout string
 }
-type task_new_type struct{
+type task_new_type struct {
 	id             string
 	ip_name        string
 	ip_port        string
