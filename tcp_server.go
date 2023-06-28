@@ -3,88 +3,128 @@ package main
 import (
 	"log"
 	"net"
+	"sync"
+	"time"
 )
 
-// функция запускается как горутина
-func process(conn net.Conn) {
-	defer conn.Close()
-	for {
+type Server struct {
+	Addr         string
+	IdleTimeout  time.Duration // через какое время бездействия закрывать коннект
+	MaxReadBytes int64         // макс объем данных
+	conns        map[*conn]struct{}
+	listener     net.Listener
+	inShutdown   bool
+	mu           sync.Mutex
+}
 
-		// считываем полученные в запросе данные
-		input := make([]byte, (1024 * 4))
-		n, err := conn.Read(input)
-		if n == 0 || err != nil {
-			log.Println("Read error:", err)
+func (srv *Server) ListenAndServe() error {
+	addr := srv.Addr
+	log.Printf("starting server on %v\n", addr)
+	// Устанавливаем прослушивание порта
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	defer listener.Close()
+	srv.listener = listener
+	for {
+		if srv.inShutdown {
 			break
 		}
-
-		// выводим на консоль сервера диагностическую информацию
-		log.Println(string(input))
-		// отправляем данные клиенту
-		//time.Sleep(time.Second * 6)
-		conn.Write([]byte(input))
-	}
-}
-func shutdown(done chan bool, ln net.Listener) chan bool {
-	done <- true // We can advance past this because we gave it buffer of 1
-	ln.Close()   // Now it the Accept will have an error above
-	return done
-}
-func main() {
-	stop_chan := make(chan bool, 1)
-	log.Println("Start server...")
-
-	// Устанавливаем прослушивание порта
-	ln, err1 := net.Listen("tcp", ":1111")
-	if err1 != nil {
-		log.Fatal(err1.Error())
-	}
-	//log.Println("Start server...")
-
-	// Запускаем цикл обработки соединений
-	for {
 		// Принимаем входящее соединение
-		//stop_chan = shutdown(stop_chan, ln)
-		conn, err2 := ln.Accept()
-		if err2 != nil {
-			select {
-			case <-stop_chan:
-				log.Println("Start is stoped...")
-			default:
-				log.Fatal("Accept failed:", err2.Error())
+		newConn, err := listener.Accept()
+		if err != nil {
+			log.Printf("error accepting connection %v", err)
+			continue
+		}
+		log.Printf("accepted connection from %v", newConn.RemoteAddr())
+		conn := &conn{
+			Conn:          newConn,
+			IdleTimeout:   srv.IdleTimeout,
+			MaxReadBuffer: srv.MaxReadBytes,
+		}
+		//кол-во соединений
+		srv.trackConn(conn)
+		// дедлайн и на чтение, и на запись
+		conn.SetDeadline(time.Now().Add(conn.IdleTimeout))
+		// запускаем функцию process(conn)   как горутину
+		go srv.process(conn)
+	}
+	return nil
+}
+func (srv *Server) process(conn *conn) error {
+	// функция запускается как горутина
+	defer func() {
+		log.Printf("closing connection from %v", conn.RemoteAddr())
+		conn.Close()
+		srv.deleteConn(conn)
+	}()
+	deadline := time.After(conn.IdleTimeout)
+	for {
+		select {
+		case <-deadline:
+			return nil
+		default:
+			// считываем полученные в запросе данные
+			input := make([]byte, (1024 * 4))
+			n, err := conn.Read(input)
+			if n == 0 || err != nil {
+				log.Println("Read error:", err)
+				time.Sleep(time.Second * 3)
+				break
 			}
+
+			// выводим на консоль сервера диагностическую информацию
+			log.Println(string(input))
+			// отправляем данные клиенту
+			//time.Sleep(time.Second * 6)
+			conn.Write([]byte(input))
+			deadline = time.After(conn.IdleTimeout)
+		}
+
+	}
+	return nil
+}
+
+// перестаем принимать новые соединения.
+// Опрашиваем оставшиеся соединения и ждем пока они прекратят свою работу.
+// Как только все соединения закрыты, можно останавливать наш сервер.
+func (srv *Server) Shutdown() {
+
+	srv.inShutdown = true
+	log.Println("shutting down...")
+	srv.listener.Close()
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		//новые соединения не принимаются, текущие пока продолжают свою работу.
+		//Дальше, мы опрашиваем счетчик текущих соединений каждые 500ms.
+		//Как только счетчик доходит до 0 мы останавливаем сервер.
+		select {
+		case <-ticker.C:
+			log.Printf("waiting on %v connections", len(srv.conns))
+		}
+		if len(srv.conns) == 0 {
 			return
 		}
-		/*if err2 != nil {
-			log.Println(err2.Error())
-			conn.Close()
-			continue
-		}*/
-		// запускаем функцию process(conn)   как горутину
-		go process(conn)
 	}
 }
 
-/*
-select {
-		//case <-stopChan:
-		//	log.Println("Stopping server")
-		//	return
-		case <-stop:
-			go func() {
-				defer signal.Stop(stop)
-				sig := <-stop
-				action()
-			}()
-		default:
-			// Принимаем входящее соединение
-			conn, err2 := ln.Accept()
-			if err2 != nil {
-				log.Println(err2.Error())
-				conn.Close()
-				continue
-			}
-			// запускаем функцию process(conn)   как горутину
-			go process(conn)
-		}
-	}*/
+// отслеживаем количество соединений
+func (srv *Server) trackConn(con *conn) {
+	// отложенное разблокированиме
+	defer srv.mu.Unlock()
+	//Для блокирования доступа к общему разделяемому ресурсу
+	srv.mu.Lock()
+	if srv.conns == nil {
+		srv.conns = make(map[*conn]struct{})
+	}
+	srv.conns[con] = struct{}{}
+}
+
+// удаляем соединение после закрытия(мертвые)
+func (srv *Server) deleteConn(conn *conn) {
+	defer srv.mu.Unlock()
+	srv.mu.Lock()
+	delete(srv.conns, conn)
+}
