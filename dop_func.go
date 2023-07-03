@@ -4,22 +4,19 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
-	"net"
-	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 )
 
+var (
+	alarm_time = final_time_time()
+)
+
 const (
 	DateTime = "2006-01-02 15:04:05"
 	//final_time = "2023-06-19 15:42:00"
-)
-
-var (
-	result = []string{}
 )
 
 func final_time_time() time.Time {
@@ -32,13 +29,15 @@ func unslice(old string) string {
 	copy(new, old)
 	return string(old)
 }
-func final_time() string {
+func final_time() string { // формирование строки врмеени, по которому будет срабатывать будтльник
 	time_c := time.Now()
+	// берем текущее время и дату, вытаскиваем оттуда только дату
+	// и конкатенируем с тем врменем, по которому должен сработать будильник
 	time_str := time_c.String()
 	time_str = strings.TrimSpace(time_str)
 	slice := strings.Split(time_str, "")
 	slice = slice[:10]
-	var time_fin = []string{"17:35:00"}
+	var time_fin = []string{"17:45:00"}
 	c := append(slice, time_fin...)
 	str2 := strings.Join(c, " ")
 	str2 = strings.TrimSpace(str2)
@@ -60,136 +59,14 @@ func final_time() string {
 	return s
 }
 
-type checker interface {
-	check(result []string) bool
-}
-
 //type http_prov struct{}
 
 //type tcp_prov struct{}
 
-func (task task_http) check() (bool, []string) {
-
-	timeout, err1 := strconv.Atoi(task.answer_timeout)
-	if err1 != nil {
-		log.Println(err1.Error())
-	}
-	client := http.Client{
-		Timeout: time.Duration(timeout) * time.Nanosecond,
-	}
-
-	time_c := time.Now()
-	time_format_c := time_c.Format(time.DateTime)
-	msg := "Номер задачи: " + task.id + " тип проверки: http " + "текущая дата: " + time_format_c + " результат проверки: "
-
-	log.Println("http_prov satrted the work")
-
-	resp, err := client.Get(task.url)
-	if err != nil {
-		log.Println(err)
-		msg = msg + "Error " + "комментарии: " + "impossible get url " + task.url + "\n"
-		result = append(result, msg)
-		return false, result
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Println(err)
-		msg = msg + "Error " + "комментарии: " + "impossible read the Body" + "/n"
-		result = append(result, msg)
-		return false, result
-	}
-	_ = body
-	log.Println("HTTP Response Status:", resp.StatusCode, http.StatusText(resp.StatusCode))
-
-	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
-		log.Println("HTTP Status is in the 2xx range\n")
-		msg = msg + "OK " + "комментарии: " + "StatusCode: " + strconv.Itoa(resp.StatusCode) + "\n"
-		result = append(result, msg)
-		return true, result
-	} else {
-		log.Println("Something has broken\n")
-		msg = msg + "Error\n"
-		result = append(result, msg)
-		return false, result
-	}
-
-}
-
-func (task task_tcp) check() (bool, []string) {
-	timeout, err1 := strconv.Atoi(task.answer_timeout)
-	if err1 != nil {
-		log.Println(err1.Error())
-	}
-	time_c := time.Now()
-	time_format_c := time_c.Format(time.DateTime)
-	msg := "Номер задачи: " + task.id + " тип проверки: tcp " + "текущая дата: " + time_format_c + " результат проверки: "
-	log.Println("tcp_prov satrted the work")
-	timeout_time := time.Duration(timeout)
-	_, err := net.DialTimeout("tcp", task.ip_name+":"+task.ip_port, timeout_time)
-	if err != nil {
-		log.Printf("%s %s %s", task.ip_name, "not responding on port ", task.ip_port, err.Error())
-		log.Println()
-		msg = msg + "Error " + "комментарии:" + " not responding on current port " + task.ip_port + "\n"
-		result = append(result, msg)
-		return false, result
-	} else {
-		log.Printf("%s %s %s\n", task.ip_name, "responding on port:", task.ip_port)
-		log.Println()
-		msg = msg + "OK\n"
-		result = append(result, msg)
-		return true, result
-	}
-
-}
-func (task task_new_type) check() (bool, []string) {
-
-	timeout, err1 := strconv.Atoi(task.answer_timeout)
-	if err1 != nil {
-		log.Println(err1.Error())
-	}
-	_ = timeout
-
-	time_c := time.Now()
-	time_format_c := time_c.Format(time.DateTime)
-	msg := "Номер задачи: " + task.id + " тип проверки: http " + "текущая дата: " + time_format_c + " результат проверки: "
-
-	log.Println("http_prov satrted the work")
-
-	resp, err := http.Get(task.url)
-	if err != nil {
-		log.Println(err)
-		msg = msg + "Error " + "комментарии: " + "impossible get url " + task.url + "\n"
-		result = append(result, msg)
-		return false, result
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Println(err)
-		msg = msg + "Error " + "комментарии: " + "impossible read the Body" + "/n"
-		result = append(result, msg)
-		return false, result
-	}
-	_ = body
-	log.Println("HTTP Response Status:", resp.StatusCode, http.StatusText(resp.StatusCode))
-
-	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
-		log.Println("HTTP Status is in the 2xx range\n")
-		msg = msg + "OK " + "комментарии: " + "StatusCode: " + strconv.Itoa(resp.StatusCode) + "\n"
-		result = append(result, msg)
-		return true, result
-	} else {
-		log.Println("Something has broken\n")
-		msg = msg + "Error\n"
-		result = append(result, msg)
-		return false, result
-	}
-
-}
 func Run(bot *tgbotapi.BotAPI) {
 	i := 0
-	log.Println("Alarm will ring in ", time.Until(final_time_time()))
+
+	log.Println("Alarm will ring in ", time.Until(alarm_time))
 	tg := time.Until(final_time_time())
 	ticker := time.AfterFunc(tg, func() {
 		//i = i.Add(1 * time.Second)
@@ -209,9 +86,13 @@ func Run(bot *tgbotapi.BotAPI) {
 		}
 	BRK:
 		ticker.Stop()
+		alarm_time = alarm_time.AddDate(0, 0, 1)
+		log.Println(alarm_time)
 		alarm := "Звенит будильник.Пожалуйста, проверьте статус серверов"
 		bot.Send(tgbotapi.NewMessage(653924346, alarm))
 		log.Println(time.Now().Format("2006/01/02 15:04:05.999999999"), " ALARM \n")
+		//final_time()
+		log.Println("Next alarm will ring in ", time.Until(alarm_time))
 		break
 	}
 
@@ -264,7 +145,7 @@ func load_params(list_conf map[string]map[string]string) ([]task_tcp, []task_htt
 	for Id, map_params_task := range list_conf {
 		//проходимся по мапе
 		// проверяем тип, если он tcp, записываем параметры из мапы в соот структуру
-		//также сохраняем id
+		//также сохраняем ids
 		i++
 		if map_params_task["type"] == "tcp_connect" {
 			tasks_tcp = append(tasks_tcp, task_tcp{id: Id, ip_name: map_params_task["ip_name"],
@@ -281,29 +162,4 @@ func load_params(list_conf map[string]map[string]string) ([]task_tcp, []task_htt
 	//log.Println(tasks_tcp)
 	//log.Println(tasks_http)
 	return tasks_tcp, tasks_http
-}
-
-/*
-func convert_params(mas []task_tcp){
-
-		for _, value := range mas{
-
-
-		}
-		i, err := strconv.Atoi(s)
-	    if err != nil {
-	        // ... handle error
-	        panic(err)
-	    }
-	}
-*/
-func prov_tcp_task(params_tcp []task_tcp) {
-	for _, value := range params_tcp {
-		log.Println(value.check())
-	}
-}
-func prov_http_task(params_http []task_http) {
-	for _, value := range params_http {
-		log.Println(value.check())
-	}
 }
