@@ -2,28 +2,20 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
+	"os"
 	"sort"
 
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 )
 
-type FileConfig struct {
-	FileID string
-}
-
 func main() {
-	//var test1 checker = task_tcp{}
-	//var test2 checker = task_http{}
-	//_ = test1
-	//_ = test2
 	res := []data{}
-	tasks := read_json_file("conf.json")
-	tcp, http := load_params(tasks)
-	_ = tcp
-	_ = http
-	//prov_http_task(http)
-	//prov_tcp_task(tcp)
+	var tasks map[string]map[string]string
+	var tcp []task_tcp
+	var http_t []task_http
 
 	/////////////////////////////////////
 	telegramBotToken := "5821021624:AAFNG2VEx4h9l23ios0mb892PNgYMETGCqA"
@@ -35,25 +27,53 @@ func main() {
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
 	go Run(bot)
-	//go message_func(test1, test2, "127.0.0.1", "4444")
 	// u - структура с конфигом для получения апдейтов
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
 	// используя конфиг u создаем канал в который будут прилетать новые сообщения
 	updates, _ := bot.GetUpdatesChan(u)
-	//var file_new FileConfig
-	//file_new.FileID = "sdsdsfddfsfs"
-	//file,error:=bot.GetFile(tgbotapi.FileConfig(file_new))
 	// в канал updates прилетают структуры типа Update
 	// вычитываем их и обрабатываем
 
 	for update := range updates {
-		//for !flag {
 		// универсальный ответ на любое сообщение
 		reply := ""
 		if update.Message == nil {
 			continue
+		}
+		//загрузка файла
+		if update.Message.Document != nil {
+			fileID := update.Message.Document.FileID
+			log.Printf("File %s downloaded", update.Message.Document.FileName)
+			mg := tgbotapi.NewMessage(update.Message.Chat.ID, "File downloaded")
+			bot.Send(mg)
+			fileURL, err := bot.GetFileDirectURL(fileID)
+			if err != nil {
+				log.Println(err.Error())
+				continue
+			}
+			response, err := http.Get(fileURL)
+			if err != nil {
+				log.Println(err.Error())
+				continue
+			}
+			defer response.Body.Close()
+			fileBytes, err := ioutil.ReadAll(response.Body)
+			if err != nil {
+				log.Println(err.Error())
+				continue
+			}
+			// читаем фйл и загружаем оттуда необходимые параметры
+			tasks = read_json_file(fileBytes)
+			tcp, http_t = load_params(tasks)
+			//удаляем файл
+			err = os.Remove(update.Message.Document.FileName)
+			if err != nil {
+				log.Println(err.Error())
+				continue
+			}
+			log.Printf("File %s was removed", update.Message.Document.FileName)
 		}
 
 		// логируем от кого какое сообщение пришло
@@ -92,7 +112,7 @@ func main() {
 		case "http_rec":
 
 			res_cur := []data{}
-			_, _, res, res_cur = prov_http_task(http, res_cur)
+			_, _, res, res_cur = prov_http_task(http_t, res_cur)
 			var structStr string
 			for _, value := range res_cur {
 				if value.type_prov == "http" {
@@ -109,17 +129,6 @@ func main() {
 		// отправляем
 		bot.Send(msg)
 	}
-
-	//}
-	//////////////////////
-
-	/*ch := make(chan struct{})
-	go func(c chan struct{}) {
-		Run()
-		close(c)
-	}(ch)
-	<-ch
-	*/
 
 	////////////////////////////////////
 
