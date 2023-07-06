@@ -1,36 +1,28 @@
 {
-  "1" : {
-      "type" : "tcp_connect",
-      "ip_name" : "127.0.0.1" ,
-      "ip_port" : "4444" ,
-      "answer_timeout" : "900"
-    },
-  "2" : {
-      "type" : "http_rec",
-      "ip_name" : "127.0.0.1" ,
-      "ip_port" : "4444" ,
-      "url" : "http://127.0.0.1:3333",
-      "answer_timeout" : "900"
-    },
-    "3" : {
-      "type" : "http_rec",
-      "ip_name" : "127.0.0.1" ,
-      "ip_port" : "4444" ,
-      "url" : "http://127.0.0.1:4444",
-      "answer_timeout" : "900"
-    },
-    "4" : {
-      "type" : "tcp_connect",
-      "ip_name" : "127.0.0.1" ,
-      "ip_port" : "5555" ,
-      "answer_timeout" : "900"
-    },
-    "5" : {
-      "type" : "tcp_connect",
-      "ip_name" : "127.0.0.1" ,
-      "ip_port" : "4444" ,
-      "url" : "http://127.0.0.1:3333",
-      "answer_timeout" : "900"
-    }
-    
-}
+    "1" : {
+        "type" : "tcp_connect",
+        "ip_name" : "127.0.0.1" ,
+        "ip_port" : "4444" ,
+        "answer_timeout" : "900"
+      },
+    "2" : {
+        "type" : "http_rec",
+        "ip_name" : "127.0.0.1" ,
+        "ip_port" : "4444" ,
+        "url" : "http://127.0.0.1:3333",
+        "answer_timeout" : "900"
+      },
+      "3" : {
+        "type" : "http_rec",
+        "ip_name" : "127.0.0.1" ,
+        "ip_port" : "4444" ,
+        "url" : "http://127.0.0.1:4444",
+        "answer_timeout" : "900"
+      },
+      "4" : {
+        "type" : "tcp_connect",
+        "ip_name" : "127.0.0.1" ,
+        "ip_port" : "5555" ,
+        "answer_timeout" : "900"
+      }
+  }

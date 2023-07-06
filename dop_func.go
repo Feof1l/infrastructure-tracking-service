@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"log"
 	"strings"
 	"time"
@@ -37,7 +36,7 @@ func final_time() string { // формирование строки врмеен
 	time_str = strings.TrimSpace(time_str)
 	slice := strings.Split(time_str, "")
 	slice = slice[:10]
-	var time_fin = []string{"17:45:00"}
+	var time_fin = []string{"20:45:00"}
 	c := append(slice, time_fin...)
 	str2 := strings.Join(c, " ")
 	str2 = strings.TrimSpace(str2)
@@ -97,16 +96,11 @@ func Run(bot *tgbotapi.BotAPI) {
 	}
 
 }
-func read_json_file(file_name string) map[string]map[string]string {
-	content, err := ioutil.ReadFile(file_name) // чтение файла
-	if err != nil {
-		log.Fatal("ошибка открытия файла: ", err)
-	}
-
+func read_json_file(content []byte) map[string]map[string]string {
 	var list_conf map[string]map[string]string
 	// данные с файла считываемв мапу мап - ключ - id задачи
 	// значение - мапа строк с параметрами задачи
-	err = json.Unmarshal(content, &list_conf)
+	err := json.Unmarshal(content, &list_conf)
 	if err != nil {
 		log.Fatal("Ошибка во время выполнения Unmarshal(): ", err)
 	}

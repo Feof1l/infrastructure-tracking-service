@@ -139,51 +139,6 @@ func (task task_tcp) check(res_cur []data) (bool, data, []data, []data) {
 	}
 
 }
-func (task task_new_type) check() (bool, []string) {
-
-	timeout, err1 := strconv.Atoi(task.answer_timeout)
-	if err1 != nil {
-		log.Println(err1.Error())
-	}
-	_ = timeout
-
-	time_c := time.Now()
-	time_format_c := time_c.Format(time.DateTime)
-	msg := "Номер задачи: " + task.id + " тип проверки: http " + "текущая дата: " + time_format_c + " результат проверки: "
-
-	log.Println("http_prov satrted the work")
-
-	resp, err := http.Get(task.url)
-	if err != nil {
-		log.Println(err)
-		msg = msg + "Error " + "комментарии: " + "impossible get url " + task.url + "\n"
-		result = append(result, msg)
-		return false, result
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Println(err)
-		msg = msg + "Error " + "комментарии: " + "impossible read the Body" + "/n"
-		result = append(result, msg)
-		return false, result
-	}
-	_ = body
-	log.Println("HTTP Response Status:", resp.StatusCode, http.StatusText(resp.StatusCode))
-
-	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
-		log.Println("HTTP Status is in the 2xx range\n")
-		msg = msg + "OK " + "комментарии: " + "StatusCode: " + strconv.Itoa(resp.StatusCode) + "\n"
-		result = append(result, msg)
-		return true, result
-	} else {
-		log.Println("Something has broken\n")
-		msg = msg + "Error\n"
-		result = append(result, msg)
-		return false, result
-	}
-
-}
 
 type data struct {
 	id             string
